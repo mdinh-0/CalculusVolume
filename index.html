@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Solid of Revolution Grapher</title>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.0/math.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    input, select {
+      padding: 6px;
+      margin: 5px;
+    }
+    #volumeOutput {
+      margin-top: 15px;
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    #areaPlot {
+      width: 100%;
+      height: 400px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h2>Solid of Revolution Grapher</h2>
+
+  <div id="controls">
+    <!-- Inputs for functions and domain limits -->
+    <label>Outer function f(x): <input type="text" id="functionInputF" value="x^2 + 1"></label><br>
+    <label>Inner function g(x): <input type="text" id="functionInputG" value="x"></label><br>
+    <label>a: <input type="number" id="aInput" value="0"></label>
+    <label>b: <input type="number" id="bInput" value="2"></label><br>
+
+    <!-- Axis of rotation selection -->
+    <label>Axis of rotation:
+      <select id="axisSelect" onchange="toggleCustomAxis()">
+        <option value="x">x-axis</option>
+        <option value="y">y-axis</option>
+        <option value="custom">custom</option>
+      </select>
+    </label>
+
+    <!-- Custom axis input (visible when custom is selected) -->
+    <label id="customAxisLabel" style="display:none;">
+      (e.g., y=2 or x=-1): <input type="text" id="customAxisInput" value="y=2">
+    </label><br>
+
+    <!-- Button to plot and calculate volume -->
+    <button onclick="plotSolid()">Plot & Calculate Volume</button>
+  </div>
+
+  <!-- Plotting containers -->
+  <div id="plot" style="width: 100%; height: 600px;"></div>
+  <div id="areaPlot"></div>
+  <div id="volumeOutput"></div>
+
+  <script>
+    // Toggle custom axis input visibility
+    function toggleCustomAxis() {
+      const axis = document.getElementById("axisSelect").value;
+      document.getElementById("customAxisLabel").style.display = axis === "custom" ? "inline" : "none";
+    }
+
+    // Parse axis input (either x, y or custom axis)
+    function parseAxis() {
+      const axisMode = document.getElementById("axisSelect").value;
+      if (axisMode === "x" || axisMode === "y") {
+        return { type: axisMode, value: 0 };
+      } else {
+        const str = document.getElementById("customAxisInput").value.trim();
+        const match = str.match(/^([xy])\s*=\s*(-?\d+(\.\d+)?)$/);
+        if (!match) {
+          alert("Invalid custom axis. Use format like y=2 or x=-1");
+          return { type: 'x', value: 0 };
+        }
+        return { type: match[1], value: parseFloat(match[2]) };
+      }
+    }
+
+    // Function to plot the solid of revolution and calculate volume
+    function plotSolid() {
+      const exprF = document.getElementById("functionInputF").value;
+      const exprG = document.getElementById("functionInputG").value;
+      const a = parseFloat(document.getElementById("aInput").value);
+      const b = parseFloat(document.getElementById("bInput").value);
+      const axis = parseAxis(); // Get selected axis (x, y, custom)
+
+      const f = math.compile(exprF);
+      const g = math.compile(exprG);
+      const steps = 100;
+      const thetaSteps = 50;
+
+      const u = math.range(a, b, (b - a) / steps, true).toArray();
+      const theta = math.range(0, 2 * Math.PI, 2 * Math.PI / thetaSteps, true).toArray();
+
+      const xData = [], yData = [], zData = [];
+      let volume = 0;
+      const dx = (b - a) / steps;
+
+      for (let i = 0; i < u.length; i++) {
+        const x = u[i];
+        const fVal = f.evaluate({ x });
+        const gVal = g.evaluate({ x });
+
+        let R_outer = 0, R_inner = 0;
+        let shellRadius = 0, shellHeight = 0;
+
+        if (axis.type === "x") {
+          // Washer method (rotation around x-axis)
+          R_outer = Math.abs(fVal - axis.value);
+          R_inner = Math.abs(gVal - axis.value);
+          volume += Math.PI * (R_outer ** 2 - R_inner ** 2) * dx;
+        } else {
+          // Shell method (rotation around y-axis or custom axis)
+          shellRadius = Math.abs(x - axis.value);
+          shellHeight = Math.abs(fVal - gVal);
+          volume += 2 * Math.PI * shellRadius * shellHeight * dx;
+        }
+
+        // 3D surface plot data (outer function only, for now)
+        const xRow = [], yRow = [], zRow = [];
+        const outer = fVal;
+
+        for (let j = 0; j < theta.length; j++) {
+          const angle = theta[j];
+          if (axis.type === "x") {
+            // Rotation around x-axis
+            xRow.push(x);
+            yRow.push((outer - axis.value) * Math.cos(angle) + axis.value);
+            zRow.push((outer - axis.value) * Math.sin(angle));
+          } else {
+            // Rotation around y-axis or custom axis
+            xRow.push((outer - axis.value) * Math.cos(angle) + axis.value);
+            yRow.push(x);
+            zRow.push((outer - axis.value) * Math.sin(angle));
+          }
+        }
+
+        xData.push(xRow);
+        yData.push(yRow);
+        zData.push(zRow);
+      }
+
+      // Plot the solid as a 3D surface plot
+      const surface = {
+        type: 'surface',
+        x: xData,
+        y: yData,
+        z: zData,
+        colorscale: 'Viridis',
+        opacity: 0.9,
+        showscale: false
+      };
+
+      Plotly.newPlot('plot', [surface], {
+        margin: { t: 0 },
+        scene: {
+          xaxis: { title: 'x' },
+          yaxis: { title: 'y' },
+          zaxis: { title: 'z' }
+        }
+      });
+
+      // Plot the area between the curves (2D view)
+      const fValues = u.map(x => f.evaluate({ x }));
+      const gValues = u.map(x => g.evaluate({ x }));
+
+      const areaPlot = {
+        data: [
+          {
+            x: u,
+            y: fValues,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'f(x)',
+            line: { color: 'blue' }
+          },
+          {
+            x: u,
+            y: gValues,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'g(x)',
+            line: { color: 'red' }
+          },
+          {
+            x: u,
+            y: fValues,
+            type: 'scatter',
+            mode: 'lines',
+            name: 'Area between curves',
+            fill: 'tonexty',
+            fillcolor: 'rgba(0, 100, 255, 0.2)',
+            line: { color: 'transparent' }
+          }
+        ],
+        layout: {
+          title: 'Area Between Curves f(x) and g(x)',
+          xaxis: { title: 'x' },
+          yaxis: { title: 'y' },
+          showlegend: true
+        }
+      };
+
+      Plotly.newPlot('areaPlot', areaPlot);
+
+      // Display volume
+      document.getElementById("volumeOutput").innerText =
+        `📦 Volume ≈ ${volume.toFixed(4)} units³ (${axis.type === "x" ? "Washer" : "Shell"} method)`;
+    }
+
+    plotSolid(); // Initial plot on page load (optional)
+  </script>
+</body>
+</html>
+
+
