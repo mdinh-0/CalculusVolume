@@ -33,13 +33,11 @@
   <h2>Solid of Revolution Grapher by Matthew Dinh & Ethan Pham</h2>
 
   <div id="controls">
-    <!-- Inputs for functions and domain limits -->
     <label>Outer function f(x): <input type="text" id="functionInputF" value="x^2 + 1"></label><br>
     <label>Inner function g(x): <input type="text" id="functionInputG" value="x"></label><br>
     <label>a: <input type="number" id="aInput" value="0"></label>
     <label>b: <input type="number" id="bInput" value="2"></label><br>
 
-    <!-- Axis of rotation selection -->
     <label>Axis of rotation:
       <select id="axisSelect" onchange="toggleCustomAxis()">
         <option value="x">x-axis</option>
@@ -48,28 +46,23 @@
       </select>
     </label>
 
-    <!-- Custom axis input (visible when custom is selected) -->
     <label id="customAxisLabel" style="display:none;">
       (e.g., y=2 or x=-1): <input type="text" id="customAxisInput" value="y=2">
     </label><br>
 
-    <!-- Button to plot and calculate volume -->
     <button onclick="plotSolid()">Plot & Calculate Volume</button>
   </div>
 
-  <!-- Plotting containers -->
   <div id="plot" style="width: 100%; height: 600px;"></div>
   <div id="areaPlot"></div>
   <div id="volumeOutput"></div>
 
   <script>
-    // Toggle custom axis input visibility
     function toggleCustomAxis() {
       const axis = document.getElementById("axisSelect").value;
       document.getElementById("customAxisLabel").style.display = axis === "custom" ? "inline" : "none";
     }
 
-    // Parse axis input (either x, y or custom axis)
     function parseAxis() {
       const axisMode = document.getElementById("axisSelect").value;
       if (axisMode === "x" || axisMode === "y") {
@@ -85,13 +78,12 @@
       }
     }
 
-    // Function to plot the solid of revolution and calculate volume
     function plotSolid() {
       const exprF = document.getElementById("functionInputF").value;
       const exprG = document.getElementById("functionInputG").value;
       const a = parseFloat(document.getElementById("aInput").value);
       const b = parseFloat(document.getElementById("bInput").value);
-      const axis = parseAxis(); // Get selected axis (x, y, custom)
+      const axis = parseAxis();
 
       const f = math.compile(exprF);
       const g = math.compile(exprG);
@@ -107,37 +99,36 @@
 
       for (let i = 0; i < u.length; i++) {
         const x = u[i];
-        const fVal = f.evaluate({ x });
-        const gVal = g.evaluate({ x });
+        let fVal = f.evaluate({ x });
+        let gVal = g.evaluate({ x });
+
+        if (isNaN(fVal) || isNaN(gVal)) continue;
 
         let R_outer = 0, R_inner = 0;
         let shellRadius = 0, shellHeight = 0;
 
         if (axis.type === "x") {
-          // Washer method (rotation around x-axis)
           R_outer = Math.abs(fVal - axis.value);
           R_inner = Math.abs(gVal - axis.value);
           volume += Math.PI * (R_outer ** 2 - R_inner ** 2) * dx;
         } else {
-          // Shell method (rotation around y-axis or custom axis)
+          if (fVal < gVal) continue;  // prevent negative shell height
           shellRadius = Math.abs(x - axis.value);
-          shellHeight = Math.abs(fVal - gVal);
+          shellHeight = fVal - gVal;
           volume += 2 * Math.PI * shellRadius * shellHeight * dx;
         }
 
-        // 3D surface plot data (outer function only, for now)
+        // 3D plotting
         const xRow = [], yRow = [], zRow = [];
         const outer = fVal;
 
         for (let j = 0; j < theta.length; j++) {
           const angle = theta[j];
           if (axis.type === "x") {
-            // Rotation around x-axis
             xRow.push(x);
             yRow.push((outer - axis.value) * Math.cos(angle) + axis.value);
             zRow.push((outer - axis.value) * Math.sin(angle));
           } else {
-            // Rotation around y-axis or custom axis
             xRow.push((outer - axis.value) * Math.cos(angle) + axis.value);
             yRow.push(x);
             zRow.push((outer - axis.value) * Math.sin(angle));
@@ -149,7 +140,6 @@
         zData.push(zRow);
       }
 
-      // Plot the solid as a 3D surface plot
       const surface = {
         type: 'surface',
         x: xData,
@@ -169,7 +159,7 @@
         }
       });
 
-      // Plot the area between the curves (2D view)
+      // Area between curves (2D)
       const fValues = u.map(x => f.evaluate({ x }));
       const gValues = u.map(x => g.evaluate({ x }));
 
@@ -212,14 +202,12 @@
 
       Plotly.newPlot('areaPlot', areaPlot);
 
-      // Display volume
+      // Volume output
       document.getElementById("volumeOutput").innerText =
         `📦 Volume ≈ ${volume.toFixed(4)} units³ (${axis.type === "x" ? "Washer" : "Shell"} method)`;
     }
 
-    plotSolid(); // Initial plot on page load (optional)
+    plotSolid();
   </script>
 </body>
 </html>
-
-
