@@ -36,7 +36,7 @@
     <label>Outer function f(x): <input type="text" id="functionInputF" value="x^2 + 1"></label><br>
     <label>Inner function g(x): <input type="text" id="functionInputG" value="x"></label><br>
     <label>a: <input type="number" id="aInput" value="0"></label>
-    <label>b: <input type="number" id="bInput" value="2"></label><br>
+    <label>b: <input type="number" id="bInput" value="1"></label><br>
 
     <label>Axis of rotation:
       <select id="axisSelect" onchange="toggleCustomAxis()">
@@ -78,6 +78,19 @@
       }
     }
 
+    // Simpson's Rule Integration
+    function simpsonsRule(f, a, b, n) {
+      const dx = (b - a) / n;
+      let sum = f(a) + f(b);
+      for (let i = 1; i < n; i += 2) {
+        sum += 4 * f(a + i * dx);
+      }
+      for (let i = 2; i < n - 1; i += 2) {
+        sum += 2 * f(a + i * dx);
+      }
+      return (dx / 3) * sum;
+    }
+
     function plotSolid() {
       const exprF = document.getElementById("functionInputF").value;
       const exprG = document.getElementById("functionInputG").value;
@@ -87,8 +100,8 @@
 
       const f = math.compile(exprF);
       const g = math.compile(exprG);
-      const steps = 500;
-      const thetaSteps = 50;
+      const steps = 1000;  // Increased steps for more accuracy
+      const thetaSteps = 100;  // Increased theta steps for smoother rotation
 
       const dx = (b - a) / steps;
       const u = Array.from({ length: steps }, (_, i) => a + dx * (i + 0.5));  // Midpoints
@@ -203,6 +216,9 @@
 
       Plotly.newPlot('areaPlot', areaPlot);
 
+      // Volume output with Simpson's Rule
+      volume = simpsonsRule(x => Math.PI * (Math.abs(f.evaluate({ x })) - Math.abs(g.evaluate({ x }))) ** 2, a, b, steps);
+      
       document.getElementById("volumeOutput").innerText =
         `📦 Volume ≈ ${volume.toFixed(4)} units³ (${axis.type === "x" ? "Washer" : "Shell"} method)`;
     }
