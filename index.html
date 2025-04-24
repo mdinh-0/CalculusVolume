@@ -104,23 +104,24 @@
 
         if (isNaN(fVal) || isNaN(gVal)) continue;
 
-        let R_outer = 0, R_inner = 0;
-        let shellRadius = 0, shellHeight = 0;
-
         if (axis.type === "x") {
-          R_outer = Math.abs(fVal - axis.value);
-          R_inner = Math.abs(gVal - axis.value);
+          // Washer method with correct top/bottom
+          const top = Math.max(fVal, gVal);
+          const bottom = Math.min(fVal, gVal);
+          const R_outer = Math.abs(top - axis.value);
+          const R_inner = Math.abs(bottom - axis.value);
           volume += Math.PI * (R_outer ** 2 - R_inner ** 2) * dx;
         } else {
-          if (fVal < gVal) continue;  // prevent negative shell height
-          shellRadius = Math.abs(x - axis.value);
-          shellHeight = fVal - gVal;
+          // Shell method
+          if (fVal < gVal) continue;
+          const shellRadius = Math.abs(x - axis.value);
+          const shellHeight = fVal - gVal;
           volume += 2 * Math.PI * shellRadius * shellHeight * dx;
         }
 
         // 3D plotting
         const xRow = [], yRow = [], zRow = [];
-        const outer = fVal;
+        const outer = Math.max(fVal, gVal);  // Use top for the surface
 
         for (let j = 0; j < theta.length; j++) {
           const angle = theta[j];
@@ -159,7 +160,6 @@
         }
       });
 
-      // Area between curves (2D)
       const fValues = u.map(x => f.evaluate({ x }));
       const gValues = u.map(x => g.evaluate({ x }));
 
@@ -202,7 +202,6 @@
 
       Plotly.newPlot('areaPlot', areaPlot);
 
-      // Volume output
       document.getElementById("volumeOutput").innerText =
         `📦 Volume ≈ ${volume.toFixed(4)} units³ (${axis.type === "x" ? "Washer" : "Shell"} method)`;
     }
